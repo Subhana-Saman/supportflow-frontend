@@ -4,34 +4,22 @@ class SocketService {
   constructor() {
     this.socket = null;
     this.listeners = {};
+    this._loggedError = false;
   }
 
-  connect() {
-    // Socket.IO is disabled on the Vercel production deployment.
-    // It remains available during local development.
-    if (import.meta.env.PROD) {
-      console.log('🔌 Socket.IO disabled in production');
-      return null;
-    }
-
-    // Avoid opening a second connection if one is already active.
-    if (this.socket?.connected) {
-      return this.socket;
-    }
-
-    const socketUrl =
-      import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-
+  connect(token) {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    
     this.socket = io(socketUrl, {
-      withCredentials: true,
-      transports: ['polling', 'websocket'],
+      auth: { token },
+      transports: ['websocket'],
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 3,
+      reconnectionDelay: 2000,
+      timeout: 5000,
     });
 
     this.setupListeners();
-
     return this.socket;
   }
 
@@ -46,78 +34,81 @@ class SocketService {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
-      console.log('🔌 Socket connected');
+      this._loggedError = false;
     });
 
-    this.socket.on('disconnect', () => {
-      console.log('🔌 Socket disconnected');
+    this.socket.on('connect_error', () => {
+      // The real-time layer is optional — chat/tickets still work over REST.
+      // Log once per session instead of spamming the console on every retry.
+      if (!this._loggedError) {
+        console.warn('Real-time connection unavailable — falling back to standard updates.');
+        this._loggedError = true;
+      }
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-    });
-
+    // Message events
     this.socket.on('messageReceived', (data) => {
       if (this.listeners.onMessage) {
         this.listeners.onMessage(data);
       }
     });
 
+    // Ticket events
     this.socket.on('ticketStatusUpdated', (data) => {
       if (this.listeners.onTicketUpdate) {
         this.listeners.onTicketUpdate(data);
       }
     });
 
+    // Typing events
     this.socket.on('userTyping', (data) => {
       if (this.listeners.onTyping) {
         this.listeners.onTyping(data);
       }
     });
 
+    // Error events
     this.socket.on('error', (data) => {
-      console.error('Socket error:', data);
-
       if (this.listeners.onError) {
         this.listeners.onError(data);
       }
     });
   }
 
+  // Join a ticket room
   joinTicket(ticketId) {
-    if (this.socket?.connected) {
+    if (this.socket) {
       this.socket.emit('joinTicket', ticketId);
     }
   }
 
+  // Leave a ticket room
   leaveTicket(ticketId) {
-    if (this.socket?.connected) {
+    if (this.socket) {
       this.socket.emit('leaveTicket', ticketId);
     }
   }
 
+  // Send a message
   sendMessage(ticketId, message) {
-    if (this.socket?.connected) {
-      this.socket.emit('newMessage', {
-        ticketId,
-        message,
-      });
+    if (this.socket) {
+      this.socket.emit('newMessage', { ticketId, message });
     }
   }
 
+  // Typing indicator
   sendTyping(ticketId, isTyping) {
-    if (this.socket?.connected) {
-      this.socket.emit('typing', {
-        ticketId,
-        isTyping,
-      });
+    if (this.socket) {
+      this.socket.emit('typing', { ticketId, isTyping });
     }
   }
 
+  // Register event listeners
   on(event, callback) {
     this.listeners[event] = callback;
   }
 
+  // Remove event listener
   off(event) {
     delete this.listeners[event];
   }
