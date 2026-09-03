@@ -10,7 +10,9 @@ class SocketService {
     // Avoid opening a second connection if one is already active.
     if (this.socket?.connected) return this.socket;
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+    const socketUrl =
+  import.meta.env.VITE_SOCKET_URL ||
+  'https://supportflow-backend-three.vercel.app';
 
     this.socket = io(socketUrl, {
       // The JWT lives in an HTTP-only cookie (not readable from JS), so we
