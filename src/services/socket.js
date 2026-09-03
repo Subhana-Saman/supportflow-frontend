@@ -7,29 +7,35 @@ class SocketService {
   }
 
   connect() {
+    // Socket.IO is not available on the Vercel serverless deployment.
+    // Keep it enabled during local development.
+    if (import.meta.env.PROD) {
+      console.log('🔌 Socket.IO disabled in production');
+      return null;
+    }
+
     // Avoid opening a second connection if one is already active.
-    if (this.socket?.connected) return this.socket;
+    if (this.socket?.connected) {
+      return this.socket;
+    }
 
     const socketUrl =
-  import.meta.env.VITE_SOCKET_URL ||
-  'https://supportflow-backend-three.vercel.app';
+      import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
     this.socket = io(socketUrl, {
-      // The JWT lives in an HTTP-only cookie (not readable from JS), so we
-      // authenticate the socket the same way our REST calls do: by sending
-      // the cookie automatically. The server reads it from the handshake.
+      // JWT is stored in an HTTP-only cookie.
       withCredentials: true,
-      // Try polling first, then upgrade to websocket if possible. On
-      // serverless hosts (e.g. Vercel) persistent WebSocket connections can
-      // be unreliable, so polling as a fallback keeps chat/status updates
-      // working even when the websocket upgrade fails.
+
+      // Local development: polling first, then websocket upgrade.
       transports: ['polling', 'websocket'],
+
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
 
     this.setupListeners();
+
     return this.socket;
   }
 
@@ -79,6 +85,7 @@ class SocketService {
     // Error events
     this.socket.on('error', (data) => {
       console.error('Socket error:', data);
+
       if (this.listeners.onError) {
         this.listeners.onError(data);
       }
@@ -87,29 +94,35 @@ class SocketService {
 
   // Join a ticket room
   joinTicket(ticketId) {
-    if (this.socket) {
+    if (this.socket?.connected) {
       this.socket.emit('joinTicket', ticketId);
     }
   }
 
   // Leave a ticket room
   leaveTicket(ticketId) {
-    if (this.socket) {
+    if (this.socket?.connected) {
       this.socket.emit('leaveTicket', ticketId);
     }
   }
 
   // Send a message
   sendMessage(ticketId, message) {
-    if (this.socket) {
-      this.socket.emit('newMessage', { ticketId, message });
+    if (this.socket?.connected) {
+      this.socket.emit('newMessage', {
+        ticketId,
+        message,
+      });
     }
   }
 
   // Typing indicator
   sendTyping(ticketId, isTyping) {
-    if (this.socket) {
-      this.socket.emit('typing', { ticketId, isTyping });
+    if (this.socket?.connected) {
+      this.socket.emit('typing', {
+        ticketId,
+        isTyping,
+      });
     }
   }
 
