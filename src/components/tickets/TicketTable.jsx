@@ -1,9 +1,17 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { formatDistanceToNow } from 'date-fns';
 import { getStatusColor, getPriorityColor, getCategoryColor } from '../../utils/helpers.js';
 
 const TicketTable = ({ tickets }) => {
+  // The "View" link must point to a route the *currently logged-in user*
+  // is allowed to visit (e.g. an agent needs /agent/tickets/:id), not a
+  // route based on the ticket's customer's role — using the customer's
+  // role here was sending agents/admins to a customer-only route, which
+  // ProtectedRoute then bounced them away from.
+  const { user } = useSelector((state) => state.auth);
+
   const getRolePath = (role) => {
     const paths = {
       customer: '/customer/tickets',
@@ -54,7 +62,7 @@ const TicketTable = ({ tickets }) => {
               </td>
               <td className="py-3 px-4">
                 <Link 
-                  to={`${getRolePath(ticket.customer?.role)}/${ticket._id}`}
+                  to={`${getRolePath(user?.role)}/${ticket._id}`}
                   className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                 >
                   View

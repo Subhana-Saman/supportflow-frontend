@@ -6,12 +6,22 @@ class SocketService {
     this.listeners = {};
   }
 
-  connect(token) {
+  connect() {
+    // Avoid opening a second connection if one is already active.
+    if (this.socket?.connected) return this.socket;
+
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-    
+
     this.socket = io(socketUrl, {
-      auth: { token },
-      transports: ['websocket'],
+      // The JWT lives in an HTTP-only cookie (not readable from JS), so we
+      // authenticate the socket the same way our REST calls do: by sending
+      // the cookie automatically. The server reads it from the handshake.
+      withCredentials: true,
+      // Try polling first, then upgrade to websocket if possible. On
+      // serverless hosts (e.g. Vercel) persistent WebSocket connections can
+      // be unreliable, so polling as a fallback keeps chat/status updates
+      // working even when the websocket upgrade fails.
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,

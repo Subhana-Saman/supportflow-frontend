@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Send, Loader } from 'lucide-react';
 import { useDispatch } from 'react-redux';
-import { sendMessage } from '../../redux/ticketSlice.js';
+import { sendMessage, addMessage } from '../../redux/ticketSlice.js';
 import socketService from '../../services/socket.js';
 
 const Chat = ({ ticketId, messages, currentUser, status }) => {
@@ -26,7 +26,9 @@ const Chat = ({ ticketId, messages, currentUser, status }) => {
     socketService.joinTicket(ticketId);
 
     socketService.on('onMessage', (data) => {
-      // Message received via socket - handled by parent
+      if (data.ticketId === ticketId) {
+        dispatch(addMessage(data.message));
+      }
     });
 
     socketService.on('onTyping', (data) => {
@@ -49,10 +51,13 @@ const Chat = ({ ticketId, messages, currentUser, status }) => {
 
     setIsSending(true);
     try {
+      // Sent via REST; the server broadcasts it over the socket to the
+      // room (including us), and `addMessage` de-dupes by _id, so we must
+      // NOT also emit it over the socket ourselves — that would create a
+      // second Message document in the database for the same send.
       const result = await dispatch(sendMessage({ ticketId, message: message.trim() }));
       if (result.meta.requestStatus === 'fulfilled') {
         setMessage('');
-        socketService.sendMessage(ticketId, message.trim());
       }
     } catch (error) {
       console.error('Failed to send message:', error);

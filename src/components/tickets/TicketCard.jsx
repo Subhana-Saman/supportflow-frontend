@@ -1,12 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { formatDistanceToNow } from 'date-fns';
 import { getStatusColor, getPriorityColor, getCategoryColor } from '../../utils/helpers.js';
 import { ChevronRight } from 'lucide-react';
 
 const TicketCard = ({ ticket }) => {
+  // Route to the page the *currently logged-in user* is allowed to see,
+  // not a route based on the ticket's customer's role (that sent
+  // agents/admins to a customer-only page and got them redirected away).
+  const { user } = useSelector((state) => state.auth);
+
   const getPath = () => {
-    const role = ticket.customer?.role || 'customer';
+    const role = user?.role || 'customer';
     if (role === 'customer') return `/customer/tickets/${ticket._id}`;
     if (role === 'agent') return `/agent/tickets/${ticket._id}`;
     if (role === 'admin') return `/admin/tickets/${ticket._id}`;

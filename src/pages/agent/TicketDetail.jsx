@@ -6,42 +6,73 @@ import {
   fetchMessages, 
   sendMessage,
   updateTicket,
+  assignTicket,
   resolveTicket,
-  clearCurrentTicket 
+  clearCurrentTicket,
+  fetchActivity,
+  addMessage,
+  applyRealtimeTicketUpdate
 } from '../../redux/ticketSlice.js';
+import socketService from '../../services/socket.js';
 
 const AgentTicketDetail = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { currentTicket, messages, isLoading } = useSelector((state) => state.tickets);
+  const { currentTicket, messages, activity, isLoading } = useSelector((state) => state.tickets);
   const { user } = useSelector((state) => state.auth);
   const [newMessage, setNewMessage] = useState('');
+  const [attachment, setAttachment] = useState(null);
   const [sending, setSending] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
   const [showResolve, setShowResolve] = useState(false);
 
   useEffect(() => {
-    console.log('🔄 Loading ticket detail for ID:', id);
     dispatch(fetchTicket(id));
     dispatch(fetchMessages(id));
+    dispatch(fetchActivity(id));
     
     return () => {
       dispatch(clearCurrentTicket());
     };
   }, [dispatch, id]);
 
+  // Real-time: join this ticket's room so the customer's replies show up
+  // instantly, and other agents/admins see status changes live too.
+  useEffect(() => {
+    socketService.joinTicket(id);
+
+    socketService.on('onMessage', (data) => {
+      if (data.ticketId === id) {
+        dispatch(addMessage(data.message));
+      }
+    });
+
+    socketService.on('onTicketUpdate', (data) => {
+      if (data.ticketId === id) {
+        dispatch(applyRealtimeTicketUpdate(data.ticket));
+      }
+    });
+
+    return () => {
+      socketService.leaveTicket(id);
+      socketService.off('onMessage');
+      socketService.off('onTicketUpdate');
+    };
+  }, [dispatch, id]);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || sending) return;
+    if ((!newMessage.trim() && !attachment) || sending) return;
 
     setSending(true);
     try {
       await dispatch(sendMessage({ 
         ticketId: id, 
-        message: newMessage.trim() 
+        message: newMessage.trim(),
+        attachment
       }));
       setNewMessage('');
-      dispatch(fetchMessages(id));
+      setAttachment(null);
     } catch (error) {
       console.error('Failed to send:', error);
     } finally {
@@ -49,9 +80,27 @@ const AgentTicketDetail = () => {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File is too large. Max size is 5MB.');
+      e.target.value = '';
+      return;
+    }
+    setAttachment(file);
+  };
+
+  const handleAssignToMe = async () => {
+    await dispatch(assignTicket({ id, agentId: user._id }));
+    dispatch(fetchTicket(id));
+    dispatch(fetchActivity(id));
+  };
+
   const handleStatusChange = async (status) => {
     await dispatch(updateTicket({ id, data: { status } }));
     dispatch(fetchTicket(id));
+    dispatch(fetchActivity(id));
   };
 
   const handleResolve = async () => {
@@ -63,6 +112,7 @@ const AgentTicketDetail = () => {
     setShowResolve(false);
     setResolutionNote('');
     dispatch(fetchTicket(id));
+    dispatch(fetchActivity(id));
   };
 
   if (isLoading || !currentTicket) {
@@ -150,19 +200,25 @@ const AgentTicketDetail = () => {
       {!isResolved && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-4">
           <h3 className="font-bold text-gray-900 dark:text-white mb-3">Actions</h3>
+
+          {!currentTicket.assignedAgent ? (
+            // Unclaimed ticket: an agent must assign it to themself before
+            // they can chat or change its status (this is what actually
+            // sets ticket.assignedAgent — the old "Assigned" status button
+            // only changed the status label and never claimed the ticket,
+            // which is why messaging/status updates were rejected).
+            <button
+              onClick={handleAssignToMe}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+            >
+              Assign to Me
+            </button>
+          ) : currentTicket.assignedAgent._id !== user?._id && user?.role !== 'admin' ? (
+            <p className="text-gray-500 text-sm">
+              This ticket is assigned to {currentTicket.assignedAgent.name}. You can't manage it.
+            </p>
+          ) : (
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleStatusChange('New')}
-              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-            >
-              New
-            </button>
-            <button
-              onClick={() => handleStatusChange('Assigned')}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
-            >
-              Assigned
-            </button>
             <button
               onClick={() => handleStatusChange('In Progress')}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
@@ -176,6 +232,7 @@ const AgentTicketDetail = () => {
               Resolve
             </button>
           </div>
+          )}
 
           {showResolve && (
             <div className="mt-4 flex gap-3">
@@ -241,7 +298,26 @@ const AgentTicketDetail = () => {
                         </span>
                       )}
                     </p>
-                    <p className="mt-1">{msg.message}</p>
+                    {msg.message && <p className="mt-1">{msg.message}</p>}
+                    {msg.attachment?.fileUrl && (
+                      msg.attachment.fileType?.startsWith('image/') ? (
+                        <a href={msg.attachment.fileUrl} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={msg.attachment.fileUrl}
+                            alt={msg.attachment.fileName}
+                            className="mt-2 rounded-lg max-w-[220px]"
+                          />
+                        </a>
+                      ) : (
+                        
+                         <a href={msg.attachment.fileUrl}
+                          download={msg.attachment.fileName}
+                          className={`mt-2 inline-block px-3 py-2 rounded-lg text-sm ${isOwn ? 'bg-white/20' : 'bg-gray-200 dark:bg-gray-600'}`}
+                        >
+                          📎 {msg.attachment.fileName}
+                        </a>
+                      )
+                    )}
                     <p className="text-xs opacity-75 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString()}
                     </p>
@@ -259,23 +335,59 @@ const AgentTicketDetail = () => {
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSendMessage} className="flex gap-3 border-t border-gray-200 dark:border-gray-700 pt-4">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type your reply..."
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={sending}
-            />
-            <button
-              type="submit"
-              disabled={!newMessage.trim() || sending}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sending ? 'Sending...' : 'Send'}
-            </button>
+          <form onSubmit={handleSendMessage} className="border-t border-gray-200 dark:border-gray-700 pt-4">
+            {attachment && (
+              <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg text-sm mb-2">
+                <span>📎 {attachment.name}</span>
+                <button type="button" onClick={() => setAttachment(null)} className="text-red-600 hover:underline">
+                  Remove
+                </button>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type your reply..."
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={sending}
+              />
+              <label className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-white dark:bg-gray-700 flex items-center">
+                📎
+                <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} className="hidden" disabled={sending} />
+              </label>
+              <button
+                type="submit"
+                disabled={(!newMessage.trim() && !attachment) || sending}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sending ? 'Sending...' : 'Send'}
+              </button>
+            </div>
           </form>
+        )}
+      </div>
+
+      {/* ⭐ ACTIVITY TIMELINE */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mt-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          🕒 Activity Timeline
+        </h2>
+        {activity.length === 0 ? (
+          <p className="text-center text-gray-500 py-4">No activity recorded yet.</p>
+        ) : (
+          <div className="border-l-2 border-gray-200 dark:border-gray-700 ml-2">
+            {activity.map((entry) => (
+              <div key={entry._id} className="relative pl-5 pb-4">
+                <span className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-blue-600 border-2 border-white dark:border-gray-800" />
+                <p className="text-sm text-gray-900 dark:text-white">{entry.description}</p>
+                <p className="text-xs text-gray-400">
+                  {entry.actor?.name || 'System'} · {new Date(entry.createdAt).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

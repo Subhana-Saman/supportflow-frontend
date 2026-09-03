@@ -2,7 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../../redux/authSlice.js';
-import { Eye, EyeOff, Loader, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Loader, ArrowRight, ShieldCheck, Headphones, User as UserIcon } from 'lucide-react';
+
+// Demo accounts shown on the login page so reviewers/judges can try every role instantly.
+const DEMO_ACCOUNTS = [
+  {
+    role: 'Admin',
+    email: 'admin@supportflow.com',
+    password: 'password123',
+    icon: ShieldCheck,
+    accent: 'from-purple-500 to-purple-600',
+  },
+  {
+    role: 'Agent',
+    email: 'agent@supportflow.com',
+    password: 'password123',
+    icon: Headphones,
+    accent: 'from-blue-500 to-blue-600',
+  },
+  {
+    role: 'Customer',
+    email: 'customer1@supportflow.com',
+    password: 'password123',
+    icon: UserIcon,
+    accent: 'from-emerald-500 to-emerald-600',
+  },
+];
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,6 +36,12 @@ const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
+
+  // Fills the form with a demo account's credentials; user still clicks Sign In themselves.
+  const fillDemoAccount = (account) => {
+    setEmail(account.email);
+    setPassword(account.password);
+  };
 
   // Redirect if already logged in
   useEffect(() => {
@@ -129,6 +160,42 @@ const Login = () => {
               </p>
             </div>
           </form>
+        </div>
+
+        {/* Demo accounts — lets a reviewer try Admin / Agent / Customer without asking for credentials */}
+        <div className="mt-6 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl rounded-2xl shadow-lg border border-white/20 dark:border-gray-700/50 p-5">
+          <p className="text-center text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Try a demo account
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {DEMO_ACCOUNTS.map((account) => {
+              const Icon = account.icon;
+              return (
+                <button
+                  key={account.role}
+                  type="button"
+                  onClick={() => fillDemoAccount(account)}
+                  className="group flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-transparent bg-white dark:bg-gray-700/50 hover:shadow-md transition-all duration-200"
+                >
+                  <span className={`w-9 h-9 rounded-lg bg-gradient-to-br ${account.accent} flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform`}>
+                    <Icon size={18} />
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{account.role}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 space-y-1.5 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3">
+            {DEMO_ACCOUNTS.map((account) => (
+              <div key={account.role} className="flex items-center justify-between">
+                <span className="font-medium text-gray-600 dark:text-gray-300">{account.role}</span>
+                <span className="font-mono">{account.email} / {account.password}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-center text-[11px] text-gray-400 dark:text-gray-500">
+            Tap a role to autofill, then press Sign In
+          </p>
         </div>
 
         <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">

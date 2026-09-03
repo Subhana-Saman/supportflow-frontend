@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { getCurrentUser } from './redux/authSlice.js';
+import socketService from './services/socket.js';
 
 // Pages
 import Landing from './pages/Landing.jsx';
@@ -34,11 +35,22 @@ import ProtectedRoute from './routes/ProtectedRoute.jsx';
 
 function App() {
   const dispatch = useDispatch();
-  const { isLoading } = useSelector((state) => state.auth);
+  const { isLoading, isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(getCurrentUser());
   }, [dispatch]);
+
+  // Open one Socket.IO connection for the whole app once the user is
+  // authenticated, and close it on logout. Individual ticket pages just
+  // join/leave rooms on top of this shared connection.
+  useEffect(() => {
+    if (isAuthenticated) {
+      socketService.connect();
+    } else {
+      socketService.disconnect();
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (

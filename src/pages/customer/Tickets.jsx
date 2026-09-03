@@ -53,6 +53,7 @@ const CustomerTickets = () => {
               <option value="Assigned">Assigned</option>
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
+              <option value="Cancelled">Cancelled</option>
             </select>
             <select
               value={filters.priority}

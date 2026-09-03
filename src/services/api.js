@@ -11,29 +11,26 @@ const api = axios.create({
 
 // Request interceptor
 api.interceptors.request.use(
-  (config) => {
-    console.log(`📡 API Request: ${config.method.toUpperCase()} ${config.url}`);
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (config) => config,
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
-    return response;
-  },
+  (response) => response,
   (error) => {
     if (error.response) {
-      console.error(`❌ API Error: ${error.response.status} - ${error.response.data?.message || error.message}`);
-      
       // Handle 401 Unauthorized
       if (error.response.status === 401) {
         localStorage.removeItem('user');
-        if (!window.location.pathname.includes('/login')) {
+        // Don't force-redirect for the silent "am I logged in?" check (used on
+        // every page load, including the public landing page) or when the
+        // user is already on a public page — that's what caused the landing
+        // page to bounce straight to /login for logged-out visitors.
+        const isSilentAuthCheck = error.config?.url?.includes('/auth/me');
+        const publicPaths = ['/', '/login', '/register'];
+        const onPublicPage = publicPaths.includes(window.location.pathname);
+        if (!isSilentAuthCheck && !onPublicPage) {
           window.location.href = '/login';
         }
       }
@@ -48,25 +45,11 @@ api.interceptors.response.use(
         toast.error('Server error. Please try again later.');
       }
     } else if (error.request) {
-      console.error('❌ Network Error - No response from server');
       toast.error('Cannot connect to server. Please check if backend is running.');
     } else {
-      console.error('❌ Error:', error.message);
       toast.error('An unexpected error occurred');
     }
     
-    return Promise.reject(error);
-  }
-);
-
-api.interceptors.request.use(
-  (config) => {
-    console.log('🚀 Request:', config.method.toUpperCase(), config.url);
-    console.log('📦 Data:', config.data);
-    return config;
-  },
-  (error) => {
-    console.error('❌ Request Error:', error);
     return Promise.reject(error);
   }
 );
