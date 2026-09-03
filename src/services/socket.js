@@ -7,8 +7,8 @@ class SocketService {
   }
 
   connect() {
-    // Socket.IO is not available on the Vercel serverless deployment.
-    // Keep it enabled during local development.
+    // Socket.IO is disabled on the Vercel production deployment.
+    // It remains available during local development.
     if (import.meta.env.PROD) {
       console.log('🔌 Socket.IO disabled in production');
       return null;
@@ -23,12 +23,8 @@ class SocketService {
       import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
     this.socket = io(socketUrl, {
-      // JWT is stored in an HTTP-only cookie.
       withCredentials: true,
-
-      // Local development: polling first, then websocket upgrade.
       transports: ['polling', 'websocket'],
-
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
@@ -61,28 +57,24 @@ class SocketService {
       console.error('Socket connection error:', error);
     });
 
-    // Message events
     this.socket.on('messageReceived', (data) => {
       if (this.listeners.onMessage) {
         this.listeners.onMessage(data);
       }
     });
 
-    // Ticket events
     this.socket.on('ticketStatusUpdated', (data) => {
       if (this.listeners.onTicketUpdate) {
         this.listeners.onTicketUpdate(data);
       }
     });
 
-    // Typing events
     this.socket.on('userTyping', (data) => {
       if (this.listeners.onTyping) {
         this.listeners.onTyping(data);
       }
     });
 
-    // Error events
     this.socket.on('error', (data) => {
       console.error('Socket error:', data);
 
@@ -92,21 +84,18 @@ class SocketService {
     });
   }
 
-  // Join a ticket room
   joinTicket(ticketId) {
     if (this.socket?.connected) {
       this.socket.emit('joinTicket', ticketId);
     }
   }
 
-  // Leave a ticket room
   leaveTicket(ticketId) {
     if (this.socket?.connected) {
       this.socket.emit('leaveTicket', ticketId);
     }
   }
 
-  // Send a message
   sendMessage(ticketId, message) {
     if (this.socket?.connected) {
       this.socket.emit('newMessage', {
@@ -116,7 +105,6 @@ class SocketService {
     }
   }
 
-  // Typing indicator
   sendTyping(ticketId, isTyping) {
     if (this.socket?.connected) {
       this.socket.emit('typing', {
@@ -126,12 +114,10 @@ class SocketService {
     }
   }
 
-  // Register event listeners
   on(event, callback) {
     this.listeners[event] = callback;
   }
 
-  // Remove event listener
   off(event) {
     delete this.listeners[event];
   }
