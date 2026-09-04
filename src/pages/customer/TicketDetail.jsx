@@ -68,6 +68,7 @@ const TicketDetail = () => {
       {/* Ticket Info */}
       <div style={{ 
         background: 'white', 
+        color: '#111827',
         padding: '20px', 
         borderRadius: '12px', 
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -133,6 +134,7 @@ const TicketDetail = () => {
       {/* ⭐ CHAT SECTION */}
       <div style={{ 
         background: 'white', 
+        color: '#111827',
         padding: '20px', 
         borderRadius: '12px', 
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)' 
@@ -183,7 +185,7 @@ const TicketDetail = () => {
                         </a>
                       ) : (
                         
-                         <a href={msg.attachment.fileUrl}
+                        <a  href={msg.attachment.fileUrl}
                           download={msg.attachment.fileName}
                           style={{
                             display: 'inline-block',
@@ -282,6 +284,7 @@ const TicketDetail = () => {
       {/* ⭐ ACTIVITY TIMELINE */}
       <div style={{
         background: 'white',
+        color: '#111827',
         padding: '20px',
         borderRadius: '12px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
