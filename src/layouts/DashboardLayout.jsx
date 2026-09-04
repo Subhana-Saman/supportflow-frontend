@@ -23,7 +23,14 @@ import {
 import { logout } from '../redux/authSlice.js';
 
 const DashboardLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar should start OPEN on desktop/tablet (lg and up) but CLOSED on
+  // mobile. Previously this always started `true`, so on phones the
+  // sidebar + its dark overlay covered the whole screen on every page
+  // load until the user tapped to dismiss it — that's what was making
+  // every dashboard page (not just Tickets) look broken on mobile.
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth >= 1024
+  );
   const [isDark, setIsDark] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
