@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchStats } from '../../redux/ticketSlice.js';
-import { Users, Ticket, CheckCircle, Clock, AlertCircle, BarChart3 } from 'lucide-react';
+import { Users, Ticket, CheckCircle, Clock, AlertCircle, BarChart3, Timer, Zap } from 'lucide-react';
+import { formatMinutes } from '../../utils/helpers.js';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
@@ -49,6 +50,32 @@ const AdminDashboard = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* SLA — Average response & resolution time */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-5 border border-white/20 dark:border-gray-700/50 shadow-lg flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+            <Zap className="text-white" size={22} />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Avg. First Response Time</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">
+              {formatMinutes(stats?.avgResponseTimeMinutes)}
+            </p>
+          </div>
+        </div>
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-5 border border-white/20 dark:border-gray-700/50 shadow-lg flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+            <Timer className="text-white" size={22} />
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Avg. Resolution Time</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">
+              {formatMinutes(stats?.avgResolutionTimeMinutes)}
+            </p>
+          </div>
+        </div>
       </div>
 
       {stats?.ticketsByCategory && stats.ticketsByCategory.length > 0 && (

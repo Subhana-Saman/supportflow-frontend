@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchTicket, fetchMessages, sendMessage, clearCurrentTicket, cancelTicket, reopenTicket, fetchActivity, addMessage, applyRealtimeTicketUpdate } from '../../redux/ticketSlice.js';
-import socketService from '../../services/socket.js';
+import { fetchTicket, fetchMessages, sendMessage, clearCurrentTicket, cancelTicket, reopenTicket, fetchActivity } from '../../redux/ticketSlice.js';
 
 const TicketDetail = () => {
   const { id } = useParams();
@@ -19,36 +18,13 @@ const TicketDetail = () => {
     return () => dispatch(clearCurrentTicket());
   }, [dispatch, id]);
 
-  // Real-time: join this ticket's room so the agent's replies and status
-  // changes show up instantly, without needing to refresh the page.
-  useEffect(() => {
-    socketService.joinTicket(id);
-
-    socketService.on('onMessage', (data) => {
-      if (data.ticketId === id) {
-        dispatch(addMessage(data.message));
-      }
-    });
-
-    socketService.on('onTicketUpdate', (data) => {
-      if (data.ticketId === id) {
-        dispatch(applyRealtimeTicketUpdate(data.ticket));
-      }
-    });
-
-    return () => {
-      socketService.leaveTicket(id);
-      socketService.off('onMessage');
-      socketService.off('onTicketUpdate');
-    };
-  }, [dispatch, id]);
-
   const handleSend = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() && !attachment) return;
     await dispatch(sendMessage({ ticketId: id, message: newMessage.trim(), attachment }));
     setNewMessage('');
     setAttachment(null);
+    dispatch(fetchMessages(id));
   };
 
   const handleFileChange = (e) => {
@@ -104,6 +80,11 @@ const TicketDetail = () => {
         <p>Priority: <strong>{currentTicket.priority}</strong></p>
         <p>Category: <strong>{currentTicket.category}</strong></p>
         <p style={{ marginTop: '12px' }}>{currentTicket.description}</p>
+        {currentTicket.firstResponseAt && (
+          <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px' }}>
+            ⚡ First response: {new Date(currentTicket.firstResponseAt).toLocaleString()}
+          </p>
+        )}
         {currentTicket.resolutionNote && (
           <div style={{ marginTop: '12px', padding: '12px', background: '#e8f5e9', borderRadius: '8px' }}>
             <p><strong>Resolution:</strong> {currentTicket.resolutionNote}</p>

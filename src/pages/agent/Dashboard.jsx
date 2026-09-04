@@ -7,8 +7,10 @@ import {
   Clock, 
   CheckCircle, 
   AlertCircle, 
-  ArrowRight  // ⭐ ADD THIS
+  ArrowRight,
+  Zap
 } from 'lucide-react';
+import { formatMinutes } from '../../utils/helpers.js';
 import TicketCard from '../../components/tickets/TicketCard.jsx';
 
 const AgentDashboard = () => {
@@ -53,6 +55,19 @@ const AgentDashboard = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* SLA — this agent's own average first-response time */}
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl p-5 border border-white/20 dark:border-gray-700/50 shadow-lg flex items-center gap-4 mb-6">
+        <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+          <Zap className="text-white" size={22} />
+        </div>
+        <div>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Your Avg. First Response Time</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {formatMinutes(stats?.avgResponseTimeMinutes)}
+          </p>
+        </div>
       </div>
 
       {/* Recent Tickets */}

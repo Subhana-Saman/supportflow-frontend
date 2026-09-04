@@ -8,19 +8,13 @@ class SocketService {
   }
 
   connect(token) {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
-    
-    this.socket = io(socketUrl, {
-      auth: { token },
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: 3,
-      reconnectionDelay: 2000,
-      timeout: 5000,
-    });
-
-    this.setupListeners();
-    return this.socket;
+    // Socket.IO real-time connections are disabled: this backend runs on Vercel
+    // serverless functions, which don't support persistent WebSocket/long-polling
+    // connections. Attempting to connect here only produces failed handshake
+    // errors in the browser console with no way to recover. All messaging and
+    // ticket updates already work over the REST API (see ticketSlice.js), so
+    // this is a safe no-op — nothing in the app currently relies on socket events.
+    return null;
   }
 
   disconnect() {

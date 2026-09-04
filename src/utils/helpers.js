@@ -29,3 +29,15 @@ export const getCategoryColor = (category) => {
   };
   return colors[category] || 'bg-gray-100 text-gray-700';
 };
+
+// Formats a minute count as a short human string, e.g. 95 -> "1h 35m", 40 -> "40m"
+export const formatMinutes = (minutes) => {
+  if (minutes === null || minutes === undefined) return 'N/A';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours < 24) return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
+  return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+};
