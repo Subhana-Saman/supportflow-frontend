@@ -22,17 +22,17 @@ const TicketCard = ({ ticket }) => {
   return (
     <Link to={getPath()}>
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-700/50 p-5 hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5 cursor-pointer group">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-lg whitespace-nowrap shrink-0">
                 {ticket.ticketNumber}
               </span>
               <span className={`badge ${getStatusColor(ticket.status)}`}>{ticket.status}</span>
             </div>
             <h3 className="font-semibold text-gray-900 dark:text-white mt-2 truncate">{ticket.subject}</h3>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className={`badge ${getCategoryColor(ticket.category)}`}>{ticket.category}</span>
             <span className={`badge ${getPriorityColor(ticket.priority)}`}>{ticket.priority}</span>
           </div>
